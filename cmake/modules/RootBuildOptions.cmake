@@ -315,8 +315,10 @@ foreach(opt ${root_build_options})
 endforeach()
 
 #---Apply root7 versus language------------------------------------------------------------------
+if (NOT FIXME_TEMPORARILY_EXCLUDED_FOR_RUNTIME_CXXMODULES)
 if(cxx14 OR cxx17 OR cxx14_defval OR cxx17_defval)
   set(root7_defvalue ON)
+endif()
 endif()
 
 #---roottest option implies testing
