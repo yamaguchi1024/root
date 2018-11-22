@@ -68,8 +68,6 @@ public:
   InputFile() {}
   InputFile(const FileEntry *File,
             bool isOverridden = false, bool isOutOfDate = false) {
-    assert(!(isOverridden && isOutOfDate) &&
-           "an overridden cannot be out-of-date");
     unsigned intVal = 0;
     if (isOverridden)
       intVal = Overridden;

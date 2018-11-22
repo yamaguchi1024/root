@@ -427,8 +427,6 @@ public:
 
   /// \brief Set the serialized AST file for the top-level module of this module.
   void setASTFile(const FileEntry *File) {
-    assert((File == nullptr || getASTFile() == nullptr ||
-            getASTFile() == File) && "file path changed");
     getTopLevelModule()->ASTFile = File;
   }
 
