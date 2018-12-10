@@ -1362,14 +1362,6 @@ TCling::TCling(const char *name, const char *title, const char* const argv[])
                             "using std::string;\n"
                             "#include <cassert>\n");
    } else {
-      fInterpreter->declare("#include \"Rtypes.h\"\n"
-                            + gClassDefInterpMacro + "\n"
-                            + gInterpreterClassDef + "\n"
-                            "#undef ClassImp\n"
-                            "#define ClassImp(X);\n"
-                            "#include <string>\n"
-                            "using namespace std;\n"
-                            "#include <cassert>\n");
    }
 
    // We are now ready (enough is loaded) to init the list of opaque typedefs.
