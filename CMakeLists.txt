@@ -408,9 +408,11 @@ else()
   install(DIRECTORY ${CMAKE_BINARY_DIR}/etc/dictpch DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
 endif()
 
-file(GLOB pcm_files ${CMAKE_BINARY_DIR}/lib/*.pcm)
-list(FILTER pcm_files EXCLUDE REGEX ".*rdict.*")
-install(FILES ${pcm_files} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libraries)
+install(
+   DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+   DESTINATION ${CMAKE_INSTALL_LIBDIR}
+   FILES_MATCHING PATTERN "*.pcm"
+)
 
 #---hsimple.root---------(use the executable for clearer dependencies and proper return code)---
 add_custom_target(hsimple ALL DEPENDS tutorials/hsimple.root)
