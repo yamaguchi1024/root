@@ -88,6 +88,7 @@
 #include <cstring>
 #include <ctime>
 #include <iterator>
+#include <sys/stat.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -2497,6 +2498,17 @@ ASTReader::ReadControlBlock(ModuleFile &F,
               (uint32_t)Record[Idx++], (uint32_t)Record[Idx++],
               (uint32_t)Record[Idx++]}}};
         auto ImportedFile = ReadPath(F, Record, Idx);
+        struct stat buffer;
+
+        if (::stat(ImportedFile.c_str(), &buffer) != 0) {
+          StringRef mName = llvm::sys::path::filename(ImportedFile.c_str());
+          mName.consume_back(".pcm");
+          clang::Module *M = PP.getHeaderSearchInfo().lookupModule(mName, true, true);
+          if (M) {
+            std::string path = PP.getHeaderSearchInfo().getModuleFileName(M->Name, PP.getHeaderSearchInfo().getModuleMap().getModuleMapFileForUniquing(M)->getName(), true);
+            ImportedFile = path;
+          }
+        }
 
         // If our client can't cope with us being out of date, we can't cope with
         // our dependency being missing.
@@ -3440,12 +3452,25 @@ void ASTReader::ReadModuleOffsetMap(ModuleFile &F) const {
     StringRef Name = StringRef((const char*)Data, Len);
     Data += Len;
     ModuleFile *OM = ModuleMgr.lookup(Name);
+
     if (!OM) {
-      std::string Msg =
-          "SourceLocation remap refers to unknown module, cannot find ";
-      Msg.append(Name);
-      Error(Msg);
-      return;
+      StringRef mName = llvm::sys::path::filename(Name);
+      mName.consume_back(".pcm");
+      clang::Module *M = PP.getHeaderSearchInfo().lookupModule(mName, true, true);
+      std::string path;
+      if (M) {
+        path = PP.getHeaderSearchInfo().getModuleFileName(M->Name, PP.getHeaderSearchInfo().getModuleMap().getModuleMapFileForUniquing(M)->getName(), true);
+      }
+
+      StringRef NewName = StringRef(path);
+      OM = ModuleMgr.lookup(NewName);
+      if (!OM) {
+        std::string Msg =
+           "SourceLocation remap refers to unknown module, cannot find ";
+        Msg.append(std::string(NewName));
+        Error(Msg);
+        return;
+      }
     }
 
     uint32_t SLocOffset =
