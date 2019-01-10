@@ -88,6 +88,7 @@
 #include <cstring>
 #include <ctime>
 #include <iterator>
+#include <sys/stat.h>
 #include <limits>
 #include <map>
 #include <memory>
@@ -2498,6 +2499,23 @@ ASTReader::ReadControlBlock(ModuleFile &F,
               (uint32_t)Record[Idx++]}}};
         auto ImportedFile = ReadPath(F, Record, Idx);
 
+        struct stat Buffer;
+        // Check if ImportedFile exists on disk
+        if (::stat(ImportedFile.c_str(), &Buffer) != 0) {
+          StringRef ModuleName = llvm::sys::path::filename(ImportedFile.c_str());
+          ModuleName.consume_back(".pcm");
+          // Get clang::Module pointer by looking up the module name
+          clang::Module *M = PP.getHeaderSearchInfo().lookupModule(ModuleName, true, true);
+          if (M) {
+            std::string Path =
+               PP.getHeaderSearchInfo().getModuleFileName(M->Name,
+                     PP.getHeaderSearchInfo().getModuleMap().getModuleMapFileForUniquing(M)->getName(),
+                     true);
+            if (!Path.empty())
+              ImportedFile = Path;
+          }
+        }
+
         // If our client can't cope with us being out of date, we can't cope with
         // our dependency being missing.
         unsigned Capabilities = ClientLoadCapabilities;
@@ -3440,12 +3458,28 @@ void ASTReader::ReadModuleOffsetMap(ModuleFile &F) const {
     StringRef Name = StringRef((const char*)Data, Len);
     Data += Len;
     ModuleFile *OM = ModuleMgr.lookup(Name);
+
+    // Check if ModuleFile exists
     if (!OM) {
-      std::string Msg =
-          "SourceLocation remap refers to unknown module, cannot find ";
-      Msg.append(Name);
-      Error(Msg);
-      return;
+      StringRef ModuleName = llvm::sys::path::filename(Name);
+      ModuleName.consume_back(".pcm");
+      clang::Module *M = PP.getHeaderSearchInfo().lookupModule(ModuleName, true, true);
+      std::string Path;
+      // If module definition exists in modulemap, search the modulepath in HeaderSearchInfo
+      if (M)
+        Path = PP.getHeaderSearchInfo().getModuleFileName(M->Name,
+              PP.getHeaderSearchInfo().getModuleMap().getModuleMapFileForUniquing(M)->getName(),
+              true);
+
+      StringRef NewName = StringRef(Path);
+      OM = ModuleMgr.lookup(NewName);
+      if (!OM) {
+        std::string Msg =
+           "SourceLocation remap refers to unknown module, cannot find ";
+        Msg.append(std::string(NewName));
+        Error(Msg);
+        return;
+      }
     }
 
     uint32_t SLocOffset =
