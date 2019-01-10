@@ -309,8 +309,10 @@ foreach(opt ${root_build_options})
 endforeach()
 
 #---ROOT 7 requires C++14 standard or higher---------------------------------------------------
-if(NOT CMAKE_CXX_STANDARD GREATER 11)
-  set(root7_defvalue OFF)
+if (NOT FIXME_TEMPORARILY_EXCLUDED_FOR_RUNTIME_CXXMODULES)
+if(CMAKE_CXX_STANDARD GREATER 11)
+  set(root7_defvalue ON)
+endif()
 endif()
 
 #---roottest option implies testing
