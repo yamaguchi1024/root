@@ -6,12 +6,14 @@ ROOT_ADD_TEST_SUBDIRECTORY(test)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_CURRENT_SOURCE_DIR}/../foundation/res)
 
+if (NOT FIXME_TEMPORARILY_EXCLUDED_FOR_RUNTIME_CXXMODULES)
 if(CMAKE_CXX_STANDARD GREATER 11)
     set(Base_cxx14_dict_headers ${CMAKE_CURRENT_SOURCE_DIR}/v7/inc/ROOT/TLogger.hxx)
     set(Base_cxx14src ${CMAKE_CURRENT_SOURCE_DIR}/v7/src/TLogger.cxx)
 # while TLogger.hxx may be used without root7 flag but placed in v7/inc/,
 # we need to explicitly provide dirs where search for it
     set(install_dirs inc/ v7/inc/)
+endif()
 endif()
 
 if(root7)
