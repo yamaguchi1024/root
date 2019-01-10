@@ -61,6 +61,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <iostream>
 
 using namespace clang;
 
@@ -244,6 +245,44 @@ namespace cling {
     bool usingCxxModules = getSema().getLangOpts().Modules;
 
     if (usingCxxModules) {
+      HeaderSearchOptions& Opts = getCI()->getHeaderSearchOpts();
+      llvm::SmallVector<std::string, 3> cxxsystem;
+      llvm::SmallVector<std::string, 3> externcsystem;
+      for (unsigned i = 0, e = Opts.UserEntries.size(); i != e; ++i) {
+         const HeaderSearchOptions::Entry &E = Opts.UserEntries[i];
+         if (E.IsFramework && E.Group != frontend::Angled)
+            llvm::report_fatal_error("Invalid option set!");
+         switch (E.Group) {
+            case frontend::ExternCSystem:
+              externcsystem.push_back(E.Path);
+            case frontend::CXXSystem:
+              cxxsystem.push_back(E.Path);
+         }
+      }
+
+      std::string modulemap_overlay = "{\n 'version': 0,\n 'roots': [\n";
+      llvm::SmallVector<std::pair<std::string, std::string>, 2> huga = { std::make_pair(cxxsystem[0], "/stl.modulemap"), std::make_pair(externcsystem.back(), "/libc.modulemap")};
+      for (auto hoge : huga) {
+            modulemap_overlay += "{ 'name': '";
+            modulemap_overlay += hoge.first;
+            modulemap_overlay += "', 'type': 'directory',\n";
+            modulemap_overlay += "'contents': [\n   { 'name': 'module.modulemap', 'type': 'file',\n  'external-contents': '";
+            modulemap_overlay += m_Opts.OverlayFile + hoge.second + "'\n";
+            modulemap_overlay += "}\n ]\n }";
+            if (hoge != huga.back())
+               modulemap_overlay += ",\n";
+         }
+      modulemap_overlay += "]\n }\n ]\n }\n";
+
+      // Set up the virtual modulemap overlay file
+      std::unique_ptr<llvm::MemoryBuffer> Buffer = llvm::MemoryBuffer::getMemBuffer(modulemap_overlay);
+      IntrusiveRefCntPtr<clang::vfs::FileSystem> FS = vfs::getVFSFromYAML(std::move(Buffer), nullptr, "modulemap.overlay.yaml");
+      if (!FS.get())
+        llvm::errs() << "Error in modulemap.overlay!\n";
+
+      clang::CompilerInvocation &CInvo = getCI()->getInvocation();
+      CInvo.addOverlay(FS);
+
       // Explicitly create the modulemanager now. If we would create it later
       // implicitly then it would just overwrite our callbacks we set below.
       m_IncrParser->getCI()->createModuleManager();

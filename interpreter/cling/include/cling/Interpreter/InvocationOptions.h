@@ -86,6 +86,9 @@ namespace cling {
     ///        directive for the MetaProcessor. Defaults to "."
     std::string MetaString;
 
+    /// \brief The name of modulemap overlay file, empty if not specified.
+    std::string OverlayFile;
+
     std::vector<std::string> LibsToLoad;
     std::vector<std::string> LibSearchPath;
     std::vector<std::string> Inputs;

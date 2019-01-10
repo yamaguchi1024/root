@@ -57,6 +57,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 
 #include <stdio.h>
+#include <iostream>
 
 using namespace clang;
 

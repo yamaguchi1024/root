@@ -82,6 +82,9 @@ static const char kNoStdInc[] = "-nostdinc";
         Opts.MetaString = ".";
       }
     }
+
+    if (Arg* OverlayFileArg = Args.getLastArg(OPT_overlay, OPT_overlay_EQ))
+      Opts.OverlayFile = OverlayFileArg->getValue();
   }
 
   static void Extend(std::vector<std::string>& A, std::vector<std::string> B) {
@@ -171,7 +174,7 @@ bool CompilerOptions::DefaultLanguage(const LangOptions* LangOpts) const {
 
 InvocationOptions::InvocationOptions(int argc, const char* const* argv) :
   MetaString("."), ErrorOut(false), NoLogo(false), ShowVersion(false),
-  Help(false), NoRuntime(false) {
+  Help(false), NoRuntime(false), OverlayFile("") {
 
   ArrayRef<const char *> ArgStrings(argv, argv + argc);
   unsigned MissingArgIndex, MissingArgCount;
