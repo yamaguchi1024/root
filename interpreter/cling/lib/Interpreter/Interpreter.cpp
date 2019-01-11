@@ -58,6 +58,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/Path.h"
 
+#include <sys/stat.h>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -198,6 +199,19 @@ namespace cling {
     Interp.setCallbacks(std::move(AutoLoadCB));
   }
 
+  static std::string build_overlay(std::string system, std::string filename, std::string location, bool nlast) {
+     std::string modulemap_overlay;
+     modulemap_overlay += "{ 'name': '";
+     modulemap_overlay += system;
+     modulemap_overlay += "', 'type': 'directory',\n";
+     modulemap_overlay += "'contents': [\n   { 'name': 'module.modulemap', 'type': 'file',\n  'external-contents': '";
+     modulemap_overlay += location + filename + "'\n";
+     modulemap_overlay += "}\n ]\n }";
+     if (nlast)
+        modulemap_overlay += ",\n";
+     return modulemap_overlay;
+  }
+
   Interpreter::Interpreter(int argc, const char* const *argv,
                            const char* llvmdir /*= 0*/, bool noRuntime,
                            const Interpreter* parentInterp) :
@@ -260,18 +274,19 @@ namespace cling {
          }
       }
 
+      struct stat buffer;
       std::string modulemap_overlay = "{\n 'version': 0,\n 'roots': [\n";
-      llvm::SmallVector<std::pair<std::string, std::string>, 2> huga = { std::make_pair(cxxsystem[0], "/stl.modulemap"), std::make_pair(externcsystem.back(), "/libc.modulemap")};
-      for (auto hoge : huga) {
-            modulemap_overlay += "{ 'name': '";
-            modulemap_overlay += hoge.first;
-            modulemap_overlay += "', 'type': 'directory',\n";
-            modulemap_overlay += "'contents': [\n   { 'name': 'module.modulemap', 'type': 'file',\n  'external-contents': '";
-            modulemap_overlay += m_Opts.OverlayFile + hoge.second + "'\n";
-            modulemap_overlay += "}\n ]\n }";
-            if (hoge != huga.back())
-               modulemap_overlay += ",\n";
-         }
+
+      for (auto externpath : externcsystem) {
+          if (::stat(externpath.c_str(), &buffer) == 0)
+            modulemap_overlay += build_overlay(externpath, "/libc.modulemap", m_Opts.OverlayFile, 1);
+      }
+
+      for (auto cxxsystempath : cxxsystem) {
+          if (::stat(cxxsystempath.c_str(), &buffer) == 0)
+            modulemap_overlay += build_overlay(cxxsystempath, "/stl.modulemap", m_Opts.OverlayFile, !(cxxsystempath == cxxsystem.back()));
+      }
+
       modulemap_overlay += "]\n }\n ]\n }\n";
 
       // Set up the virtual modulemap overlay file
