@@ -49,6 +49,7 @@
 #include "clang/Frontend/Utils.h"
 #include "clang/Lex/ExternalPreprocessorSource.h"
 #include "clang/Lex/HeaderSearch.h"
+#include "clang/Lex/HeaderSearchOptions.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Parse/Parser.h"
 #include "clang/Sema/Sema.h"
@@ -259,33 +260,23 @@ namespace cling {
     bool usingCxxModules = getSema().getLangOpts().Modules;
 
     if (usingCxxModules) {
-      HeaderSearchOptions& Opts = getCI()->getHeaderSearchOpts();
-      llvm::SmallVector<std::string, 3> cxxsystem;
-      llvm::SmallVector<std::string, 3> externcsystem;
-      for (unsigned i = 0, e = Opts.UserEntries.size(); i != e; ++i) {
-         const HeaderSearchOptions::Entry &E = Opts.UserEntries[i];
-         if (E.IsFramework && E.Group != frontend::Angled)
-            llvm::report_fatal_error("Invalid option set!");
-         switch (E.Group) {
-            case frontend::ExternCSystem:
-              externcsystem.push_back(E.Path);
-            case frontend::CXXSystem:
-              cxxsystem.push_back(E.Path);
-         }
+      HeaderSearch& HSearch = getCI()->getPreprocessor().getHeaderSearchInfo();
+      llvm::SmallVector<std::string, 3> headers;
+
+      for (auto p = HSearch.system_dir_begin(); p < HSearch.system_dir_end(); p++) {
+         headers.push_back((*p).getName());
       }
 
       struct stat buffer;
       std::string modulemap_overlay = "{\n 'version': 0,\n 'roots': [\n";
 
-      for (auto externpath : externcsystem) {
-          if (::stat(externpath.c_str(), &buffer) == 0)
-            modulemap_overlay += build_overlay(externpath, "/libc.modulemap", m_Opts.OverlayFile, 1);
+      for (auto cxxsystempath : headers) {
+          if ((::stat(cxxsystempath.c_str(), &buffer) == 0) && (cxxsystempath.find("gcc") != std::string::npos)) {
+            modulemap_overlay += build_overlay(cxxsystempath, "/stl.modulemap", m_Opts.OverlayFile, 1);
+          }
       }
 
-      for (auto cxxsystempath : cxxsystem) {
-          if (::stat(cxxsystempath.c_str(), &buffer) == 0)
-            modulemap_overlay += build_overlay(cxxsystempath, "/stl.modulemap", m_Opts.OverlayFile, !(cxxsystempath == cxxsystem.back()));
-      }
+      modulemap_overlay += build_overlay("/usr/include", "/libc.modulemap", m_Opts.OverlayFile, 0);
 
       modulemap_overlay += "]\n }\n ]\n }\n";
 
