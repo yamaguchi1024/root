@@ -1998,17 +1998,15 @@ void TCling::RegisterModule(const char* modulename,
 
    bool ModuleWasSuccessfullyLoaded = false;
    if (hasCxxModule) {
-      std::string ModuleName = llvm::StringRef(modulename).substr(3).str();
+      std::string ModuleName = modulename;
+      if (llvm::StringRef(modulename).startswith("lib"))
+         ModuleName = llvm::StringRef(modulename).substr(3).str();
+
       // FIXME: We should only complain for modules which we know to exist. For example, we should not complain about
       // modules such as GenVector32 because it needs to fall back to GenVector.
       ModuleWasSuccessfullyLoaded = LoadModule(ModuleName, *fInterpreter, /*Complain=*/ false);
       if (!ModuleWasSuccessfullyLoaded) {
-         // Only report if we found the module in the modulemap.
-         clang::Preprocessor &PP = TheSema.getPreprocessor();
-         clang::HeaderSearch &headerSearch = PP.getHeaderSearchInfo();
-         clang::ModuleMap &moduleMap = headerSearch.getModuleMap();
-         if (moduleMap.findModule(ModuleName))
-            Info("TCling::RegisterModule", "Module %s in modulemap failed to load.", ModuleName.c_str());
+         Info("TCling::RegisterModule", "Module %s failed to load.", ModuleName.c_str());
       }
    }
 
