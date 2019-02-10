@@ -1089,6 +1089,7 @@ static bool LoadModule(const std::string &ModuleName, cling::Interpreter &interp
       if (success) {
          // Also make the module visible in the preprocessor to export its macros.
          PP.makeModuleVisible(M, ValidLoc);
+         Info("TCling::LoadModule", "Module %s Loaded!", M->Name.c_str());
          return success;
       }
       if (Complain) {
@@ -2007,6 +2008,8 @@ void TCling::RegisterModule(const char* modulename,
       ModuleWasSuccessfullyLoaded = LoadModule(ModuleName, *fInterpreter, /*Complain=*/ false);
       if (!ModuleWasSuccessfullyLoaded) {
          Info("TCling::RegisterModule", "Module %s failed to load.", ModuleName.c_str());
+      } else {
+         Info("TCling::RegisterModule", "Module %s Loaded!", ModuleName.c_str());
       }
    }
 
