@@ -1306,37 +1306,7 @@ TCling::TCling(const char *name, const char *title, const char* const argv[])
       // This should be vector in order to be able to pass it to LoadModules
       std::vector<std::string> CoreModules = {"ROOT_Foundation_C","ROOT_Config",
          "ROOT_Foundation_Stage1_NoRTTI", "Core", "RIO"};
-      // These modules contain global variables which conflict with users' code such as "PI".
-      // FIXME: Reducing those will let us be less dependent on rootmap files
-      static constexpr std::array<const char*, 4> ExcludeModules =
-         { { "Rtools", "RSQLite", "RInterface", "RMVA"} };
-
       LoadModules(CoreModules, *fInterpreter);
-
-      // Take this branch only from ROOT because we don't need to preload modules in rootcling
-      if (!fromRootCling) {
-         // Dynamically get all the modules and load them if they are not in core modules
-         clang::CompilerInstance &CI = *fInterpreter->getCI();
-         clang::ModuleMap &moduleMap = CI.getPreprocessor().getHeaderSearchInfo().getModuleMap();
-         clang::Preprocessor &PP = CI.getPreprocessor();
-         std::vector<std::string> ModulesPreloaded;
-
-         for (auto I = moduleMap.module_begin(), E = moduleMap.module_end(); I != E; ++I) {
-            clang::Module *M = I->second;
-            assert(M);
-
-            std::string ModuleName = GetModuleNameAsString(M, PP);
-            if (!ModuleName.empty() &&
-                  std::find(CoreModules.begin(), CoreModules.end(), ModuleName) == CoreModules.end()
-                  && std::find(ExcludeModules.begin(), ExcludeModules.end(), ModuleName) == ExcludeModules.end()) {
-               if (M->IsSystem && !M->IsMissingRequirement)
-                  LoadModule(ModuleName, *fInterpreter);
-               else if (!M->IsSystem && !M->IsMissingRequirement)
-                  ModulesPreloaded.push_back(ModuleName);
-            }
-         }
-         LoadModules(ModulesPreloaded, *fInterpreter);
-      }
 
       // Check that the gROOT macro was exported by any core module.
       assert(fInterpreter->getMacro("gROOT") && "Couldn't load gROOT macro?");
